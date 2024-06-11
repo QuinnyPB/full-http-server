@@ -1,27 +1,59 @@
+import datetime
 import os
 import socket
 import mimetypes
+import atexit
+from _thread import *
+import threading
+
 
 # Class for logging connections
-class Logger:
-  file = None
+class Logger:  
   def __init__(self):
+    self.fileWrite = None
+    self.fileRead = None
+    self.fileName = "logs.txt"
     
-  def recordLog(self, data):
-    pass
+  # make log entry
+  def recordLog(self, *data):
+    print(data)
+    self.fileWrite = open(self.fileName, "a")        
+    for log in data:
+      entry = "%s at %s\n" % (log, datetime.datetime.now())
+      self.fileWrite.write(entry)    
+    self.fileWrite.close()
+  
+  # retrieve log records
+  def getLogs(self):
+    # records logs being retrieved
+    retrEntry = "Logs retrieved from %s at %s\n" % ("user", datetime.datetime.now())
+    open(self.fileName, "w").write(retrEntry)
+    
+    logs = open(self.fileName, "r").read()
+    return logs
+
+
+  
+
 
 # Base for server
 class TCPServer:
   def __init__(self, host = '127.0.0.1', port = 8888):
     self.host = host
     self.port = port
-  
+    self.logger = Logger()
+    thread_lock = threading.Lock()
+    
   def start(self):  
     # create socket obj
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # bind socket to address/port
     sock.bind((self.host, self.port))
+    
+    log = "---- Server started on %s:%s ----" % (self.host, self.port)
+    self.logger.recordLog(log)
+    
     # listen for connections
     sock.listen(5)
     
@@ -29,20 +61,50 @@ class TCPServer:
     
     while True:
       # new connection
-      connection, address = sock.accept()            
-      print("Connection on ", address)
-      # read data from client (first 104 bytes)
-      data = connection.recv(1024)
+      connection, address = sock.accept()    
+      # print("Connection on ", address)
+      log = "Connection on {}".format(address)
+      self.logger.recordLog(log)
       
+      # acquire new lock and begin new thread 
+      # print("start threadlock")
+      # try:
+      #   self.thread_lock.acquire()
+      #   start_new_thread(self.threaded, (connection,))    
+      # except e:
+      #   print(e)
+      
+      # Is now placed inside threaded()
+      # read data from client (first 104 bytes)
+      data = connection.recv(1024)      
       response = self.handle_request(data)      
       # return data to client
-      connection.sendall(response)      
+      connection.sendall(response) 
       connection.close()
       
   def handle_request(self, data):
     # handles incoming data and returns response
     return data
- 
+  
+  # Function for multi-threading
+  def threaded(self, conn):
+    while True:
+      print("start loop")
+      # data from client
+      data = conn.recv(1024)      
+      response = self.handle_request(data)      
+      # return data to client
+      conn.sendall(response) 
+      print("end loop")
+      
+      if not data:
+        print("Terminating connection...")
+        # lock release
+        self.thread_lock.release()
+        break
+    
+      # send data back to client
+    conn.close()
  
   
 class HTTPServer(TCPServer):
@@ -84,9 +146,11 @@ class HTTPServer(TCPServer):
   
   def handle_GET(self, request):
     filename = request.uri.strip('/') # removes slash from request URI
-
+    status=0
+    response_headers=""
     # if check for requested page exists, else return 404 page
     if os.path.exists(filename):
+      status=200
       response_line = self.response_line(status_code=200)  
       
       # find file's MIME type, if nothing then 'text/html'
@@ -99,14 +163,19 @@ class HTTPServer(TCPServer):
         response_body = f.read()
         
     else:
+      status=404
       response_line = self.response_line(status_code=404)
       response_headers = self.response_headers()
       response_body = b"<h1>404 Not Found</h1>"      
     blank_line = b"\r\n"
     
+    log = "{} for {} {} on connection".format(status, request.method, filename)
+    self.logger.recordLog(log)
+    
     return b"".join([response_line, response_headers, blank_line, response_body])
     
   def handle_POST(self, request):
+    print("Attempted post")
     pass
   
   def handle_DELETE(self, request):
@@ -133,7 +202,12 @@ class HTTPServer(TCPServer):
       headers += "%s: %s\r\n" % (h, headers_copy[h])
       
     return headers.encode() # encodes str to bytes
-      
+  
+  # records server close
+  def handle_EXIT(self):
+    log = "<<< Closing server >>> " 
+    self.logger.recordLog(log)
+
 
 class HTTPRequest:
   def __init__(self, data):
@@ -156,9 +230,17 @@ class HTTPRequest:
     if len(words) > 2:
       self.http_version = words[2]
 
-      
+  
 if __name__ == '__main__':
   server = HTTPServer()
-  server.start()
+  try:
+    server.start()
+    atexit.register(server.handle_EXIT)
+  except Exception as e:
+    server.handle_EXIT()
+  finally:
+    server.handle_EXIT()
+  
+# multi-threading for multiple clients
 
       

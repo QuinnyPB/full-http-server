@@ -1,1 +1,6 @@
- mimetypes.guess_type(filename)[0] or 
+    
+      response = self.handle_request(data)      
+      # return data to client
+      connection.sendall(response) 
+      connection.close()
+      
