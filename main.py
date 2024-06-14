@@ -60,16 +60,19 @@ class TCPServer:
     while True:
       # new connection
       connection, address = sock.accept()   
-      # gets ip of the requester
-      userIP = socket.gethostbyname(socket.gethostname())      
-      log = "Connection on {} from {}".format(address, userIP)
-      self.logger.recordLog(log)
       
-      # acquire new lock and begin new thread 
-      newThread = threading.Thread(target=self.threadInstance, args=(connection,)) # Note: adding param 'daemon' will cause all threads to terminate immediateyl if server is terminated
+      # Is now placed inside threadInstance()
+      # gets ip of the requester
+      # userIP = socket.gethostbyname(socket.gethostname())      
+      # log = "Connection on {} from {}".format(address, userIP)
+      # self.logger.recordLog(log)
+      
+      # initiate new thread instance
+      # Note: adding param 'daemon' will cause all threads to terminate immediately if server is terminated
+      newThread = threading.Thread(target=self.threadInstance, args=(connection, address,)) 
       newThread.start()
             
-      # Is now placed inside threadInstance(connection)
+      # Is now placed inside threadInstance()
       # read data from client (first 1024 bytes)
       # data = connection.recv(1024)      
       # response = self.handle_request(data)      
@@ -82,9 +85,16 @@ class TCPServer:
     return data
   
   # Function for multi-threading
-  def threadInstance(self, connection):
+  def threadInstance(self, connection, address):
+    # records request
+    userIP = socket.gethostbyname(socket.gethostname())      
+    log = "Connection on {} from {}".format(address, userIP)
+    self.logger.recordLog(log)      
+    
+    # handles request
     data = connection.recv(1024)      
     response = self.handle_request(data)      
+    
     # return data to client
     connection.sendall(response) 
     connection.close()
