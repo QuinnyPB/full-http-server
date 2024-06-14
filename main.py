@@ -26,15 +26,12 @@ class Logger:
   # retrieve log records
   def getLogs(self):
     # records logs being retrieved
-    retrEntry = "Logs retrieved from %s at %s\n" % ("user", datetime.datetime.now())
-    open(self.fileName, "w").write(retrEntry)
+    log = "Logs retrieved from %s at %s\n" % ("user", datetime.datetime.now())
+    open(self.fileName, "w").write(log)
     
     logs = open(self.fileName, "r").read()
     return logs
-
-
   
-
 
 # Base for server
 class TCPServer:
@@ -46,12 +43,13 @@ class TCPServer:
     
   def start(self):  
     # create socket obj
+    
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # bind socket to address/port
     sock.bind((self.host, self.port))
     
-    log = "---- Server started on %s:%s ----" % (self.host, self.port)
+    log = "\r\n---- Server started on %s:%s ----" % (self.host, self.port)
     self.logger.recordLog(log)
     
     # listen for connections
@@ -61,50 +59,35 @@ class TCPServer:
     
     while True:
       # new connection
-      connection, address = sock.accept()    
-      # print("Connection on ", address)
-      log = "Connection on {}".format(address)
+      connection, address = sock.accept()   
+      # gets ip of the requester
+      userIP = socket.gethostbyname(socket.gethostname())      
+      log = "Connection on {} from {}".format(address, userIP)
       self.logger.recordLog(log)
       
       # acquire new lock and begin new thread 
-      # print("start threadlock")
-      # try:
-      #   self.thread_lock.acquire()
-      #   start_new_thread(self.threaded, (connection,))    
-      # except e:
-      #   print(e)
-      
-      # Is now placed inside threaded()
-      # read data from client (first 104 bytes)
-      data = connection.recv(1024)      
-      response = self.handle_request(data)      
-      # return data to client
-      connection.sendall(response) 
-      connection.close()
+      newThread = threading.Thread(target=self.threadInstance, args=(connection,)) # Note: adding param 'daemon' will cause all threads to terminate immediateyl if server is terminated
+      newThread.start()
+            
+      # Is now placed inside threadInstance(connection)
+      # read data from client (first 1024 bytes)
+      # data = connection.recv(1024)      
+      # response = self.handle_request(data)      
+      # # return data to client
+      # connection.sendall(response) 
+      # connection.close()
       
   def handle_request(self, data):
     # handles incoming data and returns response
     return data
   
   # Function for multi-threading
-  def threaded(self, conn):
-    while True:
-      print("start loop")
-      # data from client
-      data = conn.recv(1024)      
-      response = self.handle_request(data)      
-      # return data to client
-      conn.sendall(response) 
-      print("end loop")
-      
-      if not data:
-        print("Terminating connection...")
-        # lock release
-        self.thread_lock.release()
-        break
-    
-      # send data back to client
-    conn.close()
+  def threadInstance(self, connection):
+    data = connection.recv(1024)      
+    response = self.handle_request(data)      
+    # return data to client
+    connection.sendall(response) 
+    connection.close()
  
   
 class HTTPServer(TCPServer):
@@ -167,9 +150,11 @@ class HTTPServer(TCPServer):
       response_line = self.response_line(status_code=404)
       response_headers = self.response_headers()
       response_body = b"<h1>404 Not Found</h1>"      
-    blank_line = b"\r\n"
-    
-    log = "{} for {} {} on connection".format(status, request.method, filename)
+    blank_line = b"\r\n"    
+
+    if not filename: filename="/"
+      
+    log = "{} for {} {}".format(status, request.method, filename)
     self.logger.recordLog(log)
     
     return b"".join([response_line, response_headers, blank_line, response_body])
@@ -214,6 +199,7 @@ class HTTPRequest:
     self.method = None
     self.uri = None
     self.http_version = "1.1"
+    # self.ip = 
     
     self.parse(data)
     
