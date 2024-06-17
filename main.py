@@ -39,11 +39,9 @@ class TCPServer:
     self.host = host
     self.port = port
     self.logger = Logger()
-    thread_lock = threading.Lock()
     
   def start(self):  
-    # create socket obj
-    
+    # create socket obj    
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # bind socket to address/port
@@ -104,6 +102,8 @@ class HTTPServer(TCPServer):
   headers = {
     'Server': 'CrudeServer',
     'Content-Type': 'text/html',
+    'Date': datetime.datetime.now(),
+    
   }
   
   status_codes = {
@@ -147,8 +147,10 @@ class HTTPServer(TCPServer):
       response_line = self.response_line(status_code=200)  
       
       # find file's MIME type, if nothing then 'text/html'
-      content_type = mimetypes.guess_type(filename)[0] or 'text/html'      
-
+      content_type = mimetypes.guess_type(filename)[0] or 'text/html'  
+      # check cache-lifetime 
+      print(content_type)
+      
       extra_headers = {'Content-Type': content_type}
       response_headers = self.response_headers(extra_headers)
       
@@ -176,6 +178,14 @@ class HTTPServer(TCPServer):
   def handle_DELETE(self, request):
     pass
   
+  def securePagesController(self, filename):
+    pass
+  
+  
+  
+  def cacheControl(self, cacheHeader):
+    # if cacheHeader.
+    pass
   
   def response_line(self, status_code):
     reason = self.status_codes[status_code]

@@ -3,16 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="script/header.js"></script>
+    <script src="/script/header.js"></script>
     <title>Document</title>
+
+    <style>
+      .logs-embed {
+        width: 50vw;
+        height: 100vh;
+      }
+    </style>
   </head>
   <body>
     <header-component />
+
     <section>
-      <h1>
-        This is Quinn Bruckmann's attempt at a Full HTTP Server, built in
-        python/html. Welcome!
-      </h1>
+      <embed src="/logs.txt" type="" class="logs-embed" />
     </section>
   </body>
 </html>
