@@ -13,6 +13,35 @@
         This is Quinn Bruckmann's attempt at a Full HTTP Server, built in
         python/html. Welcome!
       </h1>
+
+      <br />
+
+      <form method="post">
+        <p>
+          <b>Subscribe to the server!:</b> <br />(demonstrates POST request)
+        </p>
+        <label for="name">Full Name: </label>
+        <input type="text" for="name" name="name" />
+
+        <label for="email">Email: </label>
+        <input type="text" for="email" name="email" />
+
+        <input
+          type="submit"
+          value="Subscribe"
+          onclick="refreshPage()"
+          style="margin: 5px"
+        />
+      </form>
+
+      <p></p>
     </section>
   </body>
+
+  <script type="text/javascript">
+    function refreshPage() {
+      console.log("Refreshing page");
+      location.reload ? location.reload() : (location = location);
+    }
+  </script>
 </html>

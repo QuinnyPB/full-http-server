@@ -26,6 +26,7 @@ class Header extends HTMLElement {
         <a href="/pages/resources.html">Resources</a>
         <a href="/pages/projects.html">Projects</a>
         <a href="/pages/logs.html">Logs</a>
+        <a href="/pages/dir.html">Directories</a>
       </nav>
     </header>`;
   }

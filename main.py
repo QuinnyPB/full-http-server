@@ -1,10 +1,17 @@
 import datetime
+import json
 import os
 import socket
 import mimetypes
 import atexit
 from _thread import *
 import threading
+import random
+import hashlib
+# for wsgi/url configuration
+# from wsgiref.simple_server import make_server
+# from pyramid.config import Configurator
+# from pyramid.response import Response
 
 
 # Class for logging connections
@@ -33,12 +40,13 @@ class Logger:
     return logs
   
 
-# Base for server
+# Base class for server
 class TCPServer:
   def __init__(self, host = '127.0.0.1', port = 8888):
     self.host = host
     self.port = port
     self.logger = Logger()
+    # self.config = Configurator
     
   def start(self):  
     # create socket obj    
@@ -90,17 +98,17 @@ class TCPServer:
     self.logger.recordLog(log)      
     
     # handles request
-    data = connection.recv(1024)      
+    data = connection.recv(1024)    
     response = self.handle_request(data)      
     
     # return data to client
     connection.sendall(response) 
     connection.close()
- 
+  
   
 class HTTPServer(TCPServer):
   headers = {
-    'Server': 'CrudeServer',
+    'Server': 'QuinnsHTTPServer',
     'Content-Type': 'text/html',
     'Date': datetime.datetime.now(),
     
@@ -111,6 +119,7 @@ class HTTPServer(TCPServer):
     400: 'Bad Response',
     403: 'Forbidden',
     404: 'Not Found',
+    406: 'Not Acceptable',
     500: "Internal Server Error",
     501: "Not Implemented",
   }
@@ -166,17 +175,64 @@ class HTTPServer(TCPServer):
 
     if not filename: filename="/"
       
-    log = "{} for {} {}".format(status, request.method, filename)
+    log = "{} /{} {}".format(request.method, filename, status )
     self.logger.recordLog(log)
     
     return b"".join([response_line, response_headers, blank_line, response_body])
     
+  # handles POST request
   def handle_POST(self, request):
-    print("Attempted post")
-    pass
+    filename = request.uri.strip('/') # removes slash from request URI
+    raw_fields = request.data[-1].decode(); # body data is stored at end of header as b""
+    # print('fields: ', raw_fields)
+    fields, status = self.handle_POST_FIELDS(raw_fields)   
+    # gen id
+    # random.seed(int(datetime.datetime.now().timestamp()))  # seeds random number generator
+    # id = random.uniform(0,1) # rand int
+    # id = hashlib.sha256(id).hexidigest() # hash value for id
+    fields['id'] = int(datetime.datetime.now().timestamp())
+    
+    
+    log = "{} /{} {}".format(request.method, filename, status )
+    self.logger.recordLog(log)
+    
+    # if bad input, dont store data
+    if status != 200:
+      pass
+    else:
+      # write input to db 
+      with open("db.json", 'a+') as dbfile:
+        # find next id
+        # jsonData = json.load(dbfile)
+        # print(jsonData)
+        fieldObj = json.dumps(fields, indent=2)
+        dbfile.writelines(fieldObj)
+        # for line in dbfile.readlines():
+        #   print(line)
+        dbfile.close()
+       
+    
+    response_line = self.response_line(status)
+    
+    return b"".join([response_line]);
+  
+  # processes POST body inputs
+  def handle_POST_FIELDS(self, raw_fields):
+    fieldInputs = raw_fields.split('&') # & is the splitter in HTTP POST request body's
+    fields = {}    
+    for input in fieldInputs:
+      key, value = input.split('=') # = is the attribute value assigner in POST body
+      fields[key] = value      
+      status = 200
+      # if no input given, set Not Acceptable status
+      if key == "" or value == "":
+        status = 406 # Not Acceptable     
+    return fields, status
+  
   
   def handle_DELETE(self, request):
     pass
+  
   
   def securePagesController(self, filename):
     pass
@@ -186,6 +242,7 @@ class HTTPServer(TCPServer):
   def cacheControl(self, cacheHeader):
     # if cacheHeader.
     pass
+  
   
   def response_line(self, status_code):
     reason = self.status_codes[status_code]
@@ -208,6 +265,7 @@ class HTTPServer(TCPServer):
       
     return headers.encode() # encodes str to bytes
   
+  
   # records server close
   def handle_EXIT(self):
     log = "<<< Closing server >>> " 
@@ -219,6 +277,7 @@ class HTTPRequest:
     self.method = None
     self.uri = None
     self.http_version = "1.1"
+    self.data = None
     # self.ip = 
     
     self.parse(data)
@@ -235,6 +294,8 @@ class HTTPRequest:
       
     if len(words) > 2:
       self.http_version = words[2]
+      
+    self.data = lines[2::]
 
   
 if __name__ == '__main__':
