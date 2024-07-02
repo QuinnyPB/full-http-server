@@ -1,1 +1,2 @@
-jsonData
+
+    self.logger.recordLog(log)

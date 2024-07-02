@@ -164,8 +164,8 @@ class HTTPServer(TCPServer):
       response_headers = self.response_headers(extra_headers)
       
       with open(filename, 'rb') as f:
-        response_body = f.read()
-        
+        response_body = f.read()        
+    # return error response
     else:
       status=404
       response_line = self.response_line(status_code=404)
@@ -175,7 +175,7 @@ class HTTPServer(TCPServer):
 
     if not filename: filename="/"
       
-    log = "{} /{} {}".format(request.method, filename, status )
+    log = "{} /{} {}".format(request.method, filename, status)
     self.logger.recordLog(log)
     
     return b"".join([response_line, response_headers, blank_line, response_body])
@@ -186,21 +186,16 @@ class HTTPServer(TCPServer):
     raw_fields = request.data[-1].decode(); # body data is stored at end of header as b""
     # print('fields: ', raw_fields)
     fields, status = self.handle_POST_FIELDS(raw_fields)   
-    # gen id
-    # random.seed(int(datetime.datetime.now().timestamp()))  # seeds random number generator
-    # id = random.uniform(0,1) # rand int
-    # id = hashlib.sha256(id).hexidigest() # hash value for id
-    fields['id'] = int(datetime.datetime.now().timestamp())
+    fields['id'] = self.genNewHashVal()
     
-    
-    log = "{} /{} {}".format(request.method, filename, status )
+    log = "{} /{} {} [{}, {}]".format(request.method, filename, status, fields['name'], fields['email'] )
     self.logger.recordLog(log)
     
     # if bad input, dont store data
     if status != 200:
       pass
     else:
-      # write input to db 
+      # write input to db in json format3 
       with open("db.json", 'a+') as dbfile:
         # find next id
         # jsonData = json.load(dbfile)
@@ -209,11 +204,9 @@ class HTTPServer(TCPServer):
         dbfile.writelines(fieldObj)
         # for line in dbfile.readlines():
         #   print(line)
-        dbfile.close()
-       
+        dbfile.close()       
     
-    response_line = self.response_line(status)
-    
+    response_line = self.response_line(status)    
     return b"".join([response_line]);
   
   # processes POST body inputs
@@ -229,14 +222,20 @@ class HTTPServer(TCPServer):
         status = 406 # Not Acceptable     
     return fields, status
   
+  # generates new Hash Value
+  def genNewHashVal(self):
+    random.seed(int(datetime.datetime.now().timestamp()))  # seeds random number generator with current time
+    randNum = random.uniform(0,1000) # rand int
+    hashVal = hashlib.sha256(str(randNum).encode('utf-8')).hexdigest() # hash value for id
+    return hashVal
+  
   
   def handle_DELETE(self, request):
     pass
   
-  
+    
   def securePagesController(self, filename):
-    pass
-  
+    pass  
   
   
   def cacheControl(self, cacheHeader):

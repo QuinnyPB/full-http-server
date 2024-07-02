@@ -29,19 +29,20 @@
         <input
           type="submit"
           value="Subscribe"
-          onclick="refreshPage()"
           style="margin: 5px"
-        />
+          formmethod="post"
+        >
+        </input>
       </form>
 
-      <p></p>
+      <p><b>Here are out current subscribers: </b></p>
+      <p id="subs-list"></p>
     </section>
   </body>
-
+  <script src="script/fetchSubs.js"></script>
   <script type="text/javascript">
     function refreshPage() {
-      console.log("Refreshing page");
-      location.reload ? location.reload() : (location = location);
+      event.preventDefault();
     }
   </script>
 </html>
