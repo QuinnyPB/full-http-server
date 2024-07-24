@@ -1,10 +1,10 @@
-import subscribers from "../.git";
+// import subscribers from "../db.json";
 
-function fetchSubs() {
-  var subsTag = document.getElementById("subs-list");
-  subsTag.innerHTML = subscribers;
+// function fetchSubs() {
+//   console.log(subscribers);
 
-  console.log(subscribers);
-}
+//   document.getElementById("subs").innerHTML = subscribers;
+//   // return subscribers;
+// }
 
-fetchSubs();
+// export default fetchSubs;

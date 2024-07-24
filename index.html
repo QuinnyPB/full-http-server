@@ -4,7 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="script/header.js"></script>
+    <script type="text/javascript" src="script/fetchSubs.js">
+      import subscribers from "./db.json"
+
+      function fetchSubs() {
+        console.log(subscribers);
+
+        document.getElementById("subs").innerHTML = subscribers;
+        // return subscribers;
+      }
+    </script>
+    
     <title>Document</title>
+    
   </head>
   <body>
     <header-component />
@@ -18,7 +30,7 @@
 
       <form method="post">
         <p>
-          <b>Subscribe to the server!:</b> <br />(demonstrates POST request)
+          <b>Subscribe to the server!:</b>
         </p>
         <label for="name">Full Name: </label>
         <input type="text" for="name" name="name" />
@@ -26,6 +38,9 @@
         <label for="email">Email: </label>
         <input type="text" for="email" name="email" />
 
+        <!-- indicates post submission is subscription -->
+        <input hidden type="text" name="postType" value="subscription">
+        
         <input
           type="submit"
           value="Subscribe"
@@ -33,16 +48,22 @@
           formmethod="post"
         >
         </input>
+        <!-- <p>OR</p> -->
       </form>
 
-      <p><b>Here are out current subscribers: </b></p>
-      <p id="subs-list"></p>
+      
+      <!-- <form action="post" method="post" >
+
+        <label for="file"><b>Upload a file:</b></label>
+        <input name="file" type="file" accept="image/*, video/*, audio/*, .pdf" />
+        indicates post submission is file upload
+        <input hidden type="text" name="postType" value="fileUpload">
+        <button type="submit">Upload</button>
+
+      </form>
+    -->
+      <button onclick="fetchSubs()"><b>Click for our subscribers: </b></button>
+      <div id="subs"></div> 
     </section>
   </body>
-  <script src="script/fetchSubs.js"></script>
-  <script type="text/javascript">
-    function refreshPage() {
-      event.preventDefault();
-    }
-  </script>
 </html>

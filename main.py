@@ -8,11 +8,6 @@ from _thread import *
 import threading
 import random
 import hashlib
-# for wsgi/url configuration
-# from wsgiref.simple_server import make_server
-# from pyramid.config import Configurator
-# from pyramid.response import Response
-
 
 # Class for logging connections
 class Logger:  
@@ -20,6 +15,7 @@ class Logger:
     self.fileWrite = None
     self.fileRead = None
     self.fileName = "logs.txt"
+    self.data = ""
     
   # make log entry
   def recordLog(self, *data):
@@ -28,6 +24,16 @@ class Logger:
     for log in data:
       entry = "%s at %s\n" % (log, datetime.datetime.now())
       self.fileWrite.write(entry)    
+    self.fileWrite.close()
+    
+  # adds new data to current log being prepared 
+  def addToNextLog(self, data):
+    self.data += " " + data
+    
+  # uploads log to records and resets for next log
+  def addLog(self):
+    self.fileWrite = open(self.fileName, "a")        
+    self.fileWrite.write(self.data)    
     self.fileWrite.close()
   
   # retrieve log records
@@ -158,7 +164,7 @@ class HTTPServer(TCPServer):
       # find file's MIME type, if nothing then 'text/html'
       content_type = mimetypes.guess_type(filename)[0] or 'text/html'  
       # check cache-lifetime 
-      print(content_type)
+      print("file-type: ", content_type)
       
       extra_headers = {'Content-Type': content_type}
       response_headers = self.response_headers(extra_headers)
@@ -184,30 +190,48 @@ class HTTPServer(TCPServer):
   def handle_POST(self, request):
     filename = request.uri.strip('/') # removes slash from request URI
     raw_fields = request.data[-1].decode(); # body data is stored at end of header as b""
-    # print('fields: ', raw_fields)
+    print('fields: ', raw_fields)
     fields, status = self.handle_POST_FIELDS(raw_fields)   
     fields['id'] = self.genNewHashVal()
     
-    log = "{} /{} {} [{}, {}]".format(request.method, filename, status, fields['name'], fields['email'] )
+    postData=[]
+    if fields['postType'] == 'subscription': 
+      postData = [fields['name'], fields['email']] 
+      # fields = fields[::-1] # removes postType value from fields for upload to json
+    if fields['postType'] == 'fileUpload': 
+      postData = fields['file']
+      
+    log = "{} /{} {} {}".format( request.method, filename, status, postData )
     self.logger.recordLog(log)
     
     # if bad input, dont store data
     if status != 200:
       pass
     else:
-      # write input to db in json format3 
-      with open("db.json", 'a+') as dbfile:
-        # find next id
-        # jsonData = json.load(dbfile)
-        # print(jsonData)
-        fieldObj = json.dumps(fields, indent=2)
-        dbfile.writelines(fieldObj)
-        # for line in dbfile.readlines():
-        #   print(line)
-        dbfile.close()       
-    
+      # conditonal handling for POST request = subscription || files
+      if fields['postType'] == 'subscription':
+        # write input to db in json format 
+        with open("db.json", 'a+') as dbfile:
+          # find next id
+          # jsonData = json.load(dbfile)
+          # print(jsonData)
+          fieldObj = json.dumps(fields, indent=2)
+          dbfile.writelines(fieldObj)
+          # for line in dbfile.readlines():
+          #   print(line)
+          dbfile.close()   
+          
+    # sets response fields
     response_line = self.response_line(status)    
-    return b"".join([response_line]);
+    content_type = mimetypes.guess_type(filename)[0] or 'text/html'  
+    extra_headers = {'Content-Type': content_type}
+    response_headers = self.response_headers(extra_headers)    
+    with open(filename, 'rb') as f:
+      response_body = f.read()   
+    blank_line = b"\r\n"    
+    
+    # return b"".join([response_line]);
+    return b"".join([response_line, response_headers, blank_line, response_body])
   
   # processes POST body inputs
   def handle_POST_FIELDS(self, raw_fields):
@@ -228,20 +252,7 @@ class HTTPServer(TCPServer):
     randNum = random.uniform(0,1000) # rand int
     hashVal = hashlib.sha256(str(randNum).encode('utf-8')).hexdigest() # hash value for id
     return hashVal
-  
-  
-  def handle_DELETE(self, request):
-    pass
-  
     
-  def securePagesController(self, filename):
-    pass  
-  
-  
-  def cacheControl(self, cacheHeader):
-    # if cacheHeader.
-    pass
-  
   
   def response_line(self, status_code):
     reason = self.status_codes[status_code]
